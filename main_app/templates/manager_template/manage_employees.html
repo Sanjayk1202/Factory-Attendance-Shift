@@ -1,0 +1,65 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">{{page_title}}</h3>
+                        <div class="card-tools">
+                            <span class="badge badge-info">Total Employees: {{ employees.count }}</span>
+                        </div>
+                    </div>
+                    <!-- /.card-header -->
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table id="example2" class="table table-bordered table-hover">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>SN</th>
+                                        <th>Employee ID</th>
+                                        <th>Full Name</th>
+                                        <th>Email</th>
+                                        <th>Gender</th>
+                                        <th>Department</th>
+                                        <th>Current Shift</th>
+                                        <th>Shift Preference</th>
+                                        <th>Employee ID</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for employee in employees %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td><strong>{{ employee.employee_id }}</strong></td>
+                                        <td>{{ employee.admin.last_name }}, {{ employee.admin.first_name }}</td>
+                                        <td>{{ employee.admin.email }}</td>
+                                        <td>{{ employee.admin.gender }}</td>
+                                        <td>{{ employee.department.name }}</td>
+                                        <td>{{ employee.shift.get_name_display }}</td>
+                                        <td>{{ employee.shift_preference.get_name_display|default:"No Preference" }}</td>
+                                        <td>{{ employee.employee_id }}</td>
+                                        <td>
+                                            <span class="badge badge-success">Active</span>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="10" class="text-center">No employees found in your division</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

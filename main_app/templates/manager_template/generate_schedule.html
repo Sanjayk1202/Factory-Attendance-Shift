@@ -1,0 +1,90 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">Generate Shift Schedule</h3>
+                    </div>
+                    <div class="card-body">
+                        <form method="post">
+                            {% csrf_token %}
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="{{ form.week_start_date.id_for_label }}">Week Start Date (Monday)</label>
+                                        {{ form.week_start_date }}
+                                        <small class="form-text text-muted">Select the Monday of the week you want to schedule</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card card-secondary mt-4">
+                                <div class="card-header">
+                                    <h4 class="card-title">Department Shift Requirements</h4>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-bordered">
+                                        <thead>
+                                            <tr>
+                                                <th>Department</th>
+                                                {% for shift in shifts %}
+                                                <th>{{ shift.get_name_display }}</th>
+                                                {% endfor %}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for department in departments %}
+                                            <tr>
+                                                <td><strong>{{ department.name }}</strong></td>
+                                                {% for shift in shifts %}
+                                                <td>
+                                                    <input type="number" 
+                                                           name="dept_{{ department.id }}_shift_{{ shift.name }}" 
+                                                           value="0" 
+                                                           min="0" 
+                                                           max="20"
+                                                           class="form-control">
+                                                </td>
+                                                {% endfor %}
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                    <small class="text-muted">
+                                        Enter the number of employees needed for each department and shift combination.
+                                    </small>
+                                </div>
+                            </div>
+
+                            <div class="alert alert-info mt-3">
+                                <h5><i class="icon fas fa-info"></i> Scheduling Rules</h5>
+                                <ul class="mb-0">
+                                    <li>No employee will work more than 40 hours per week</li>
+                                    <li>Employees with approved leave will be automatically excluded</li>
+                                    <li>Shift preferences will be considered where possible</li>
+                                    <li>No consecutive night shifts for the same employee</li>
+                                    <li>Employees with "No Preference" can be assigned to any shift</li>
+                                </ul>
+                            </div>
+
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-calendar-plus"></i> Generate Schedule
+                            </button>
+                            <a href="{% url 'view_shift_calendar' %}" class="btn btn-secondary btn-lg">
+                                <i class="fas fa-calendar"></i> View Calendar
+                            </a>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

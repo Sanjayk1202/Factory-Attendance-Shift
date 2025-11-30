@@ -1,0 +1,100 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">{{page_title}}</h3>
+                    </div>
+                    <div class="card-body">
+                        {% include "main_app/form_template.html" with messages=messages form=form button_text="Apply for Overtime"%}
+                    </div>
+                </div>
+
+                <!-- Overtime History -->
+                <div class="card card-secondary">
+                    <div class="card-header">
+                        <h3 class="card-title">Overtime Application History</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Date</th>
+                                        <th>Time</th>
+                                        <th>Hours</th>
+                                        <th>Reason</th>
+                                        <th>Status</th>
+                                        <th>Applied On</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for overtime in overtime_history %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>{{ overtime.date }}</td>
+                                        <td>{{ overtime.start_time }} - {{ overtime.end_time }}</td>
+                                        <td>{{ overtime.hours|floatformat:1 }} hours</td>
+                                        <td>{{ overtime.reason }}</td>
+                                        <td>
+                                            {% if overtime.status == 0 %}
+                                                <span class="badge badge-warning">Pending</span>
+                                            {% elif overtime.status == -1 %}
+                                                <span class="badge badge-danger">Rejected</span>
+                                            {% else %}
+                                                <span class="badge badge-success">Approved</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ overtime.created_at|date:"Y-m-d H:i" }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="7" class="text-center">No overtime applications found</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Overtime Summary -->
+                <div class="card card-info">
+                    <div class="card-header">
+                        <h3 class="card-title">Your Overtime Summary</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="info-box bg-success">
+                                    <span class="info-box-icon"><i class="fas fa-clock"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Total Overtime Hours</span>
+                                        <span class="info-box-number">{{ employee.total_overtime_hours|floatformat:1 }} hrs</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-box bg-warning">
+                                    <span class="info-box-icon"><i class="fas fa-calendar-check"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Overtime Available for Leave</span>
+                                        <span class="info-box-number">{{ employee.overtime_remaining|floatformat:1 }} hrs</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

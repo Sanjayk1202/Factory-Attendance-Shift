@@ -1,0 +1,188 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">{{page_title}}</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>SN</th>
+                                        <th>Employee</th>
+                                        <th>Shift</th>
+                                        <th>Date</th>
+                                        <th>Time</th>
+                                        <th>Hours</th>
+                                        <th>Reason</th>
+                                        <th>Overtime Summary</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for overtime in overtime_apps %}
+                                    <tr>
+                                        <td>{{forloop.counter}}</td>
+                                        <td>{{overtime.employee}}</td>
+                                        <td>{{overtime.employee.shift.name}}</td>
+                                        <td>{{overtime.date}}</td>
+                                        <td>{{overtime.start_time}} - {{overtime.end_time}}</td>
+                                        <td>{{overtime.hours|floatformat:1}}h</td>
+                                        <td>{{overtime.reason}}</td>
+                                        <td>
+                                            <button class="btn btn-info btn-sm view-summary" 
+                                                    data-employee-id="{{overtime.employee.id}}">
+                                                View Summary
+                                            </button>
+                                        </td>
+                                        <td>
+                                            {% if overtime.status == 0 %}
+                                                <span class="badge badge-warning">Pending</span>
+                                            {% elif overtime.status == -1 %}
+                                                <span class="badge badge-danger">Rejected</span>
+                                            {% else %}
+                                                <span class="badge badge-success">Approved</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if overtime.status == 0 %}
+                                            <button data-toggle="modal" data-target="#overtime_modal" 
+                                                    value="{{overtime.id}}" class="btn btn-primary overtime_open_modal">
+                                                Respond
+                                            </button>
+                                            {% else %}
+                                            <span class="text-muted">Processed</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="10" class="text-center">No overtime applications found</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Overtime Response Modal -->
+<div class="modal fade" id="overtime_modal" tabindex="-1" role="dialog" aria-labelledby="overtimeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Respond to Overtime Request</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="overtime_id">
+                <p>Respond to <span id="overtime_employee_name"></span>'s Overtime Request</p>  
+                <select id="reply_overtime_status" class="form-control">
+                    <option value="">-- Select --</option>
+                    <option value="1">Approve</option>
+                    <option value="-1">Reject</option>
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <button id="overtime_reply_btn" class="btn btn-success btn-block">Submit</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Overtime Summary Modal -->
+<div class="modal fade" id="summary_modal" tabindex="-1" role="dialog" aria-labelledby="summaryModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Overtime Summary</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="summary_content">
+                    Loading...
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+    $(document).ready(function(){
+        // Overtime response handling
+        $(".overtime_open_modal").click(function(){
+            var id = $(this).val()
+            var name = $(this).parents("tr").children("td:eq(1)").text()
+            $("#overtime_employee_name").text(name)
+            $("#overtime_id").val(id)
+        })
+        
+        $("#overtime_reply_btn").on("click", function(){
+            var id = $("#overtime_id").val()
+            var status = $("#reply_overtime_status").val()
+            if (status == '1' || status == '-1'){
+                $.ajax({
+                    url: "{% url 'manager_view_overtime' %}",
+                    type: 'POST',
+                    data: {
+                        id: id,
+                        status: status
+                    }
+                }).done(function(response){
+                    if (response == "True"){
+                        alert("Overtime Response Has Been Saved!")
+                        location.reload()
+                    } else {
+                        alert("Response Could Not Be Sent")
+                    }
+                }).fail(function(response){
+                    alert("Error Occurred.")
+                })
+            } else {
+                alert("Choose valid response")
+            }
+        })
+
+        // Overtime summary handling
+        $(".view-summary").click(function(){
+            var employeeId = $(this).data('employee-id');
+            $.ajax({
+                url: "{% url 'get_employee_overtime_summary' %}",
+                type: 'GET',
+                data: {
+                    employee_id: employeeId
+                },
+                success: function(response) {
+                    $("#summary_content").html(`
+                        <p><strong>Total Overtime Hours:</strong> ${response.total_overtime_hours}</p>
+                        <p><strong>Overtime Remaining (for leave):</strong> ${response.overtime_remaining}</p>
+                    `);
+                    $("#summary_modal").modal('show');
+                },
+                error: function() {
+                    alert("Error loading overtime summary");
+                }
+            });
+        });
+    })
+</script>
+{% endblock custom_js %}

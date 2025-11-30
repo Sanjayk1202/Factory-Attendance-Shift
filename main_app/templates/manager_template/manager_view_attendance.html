@@ -1,0 +1,263 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+{% block content %}
+
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">View Team Attendance</h3>
+                    </div>
+                    <div class="card-body">
+                        <!-- Date Selection Form -->
+                        <form method="post" class="form-inline mb-4">
+                            {% csrf_token %}
+                            <div class="form-group mr-2">
+                                <label for="date" class="mr-2">Select Date:</label>
+                                <input type="date" class="form-control" id="date" name="date" 
+                                       value="{{ selected_date }}" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i> View Attendance
+                            </button>
+                            <a href="{% url 'manager_view_attendance' %}" class="btn btn-secondary ml-2">
+                                <i class="fas fa-sync"></i> Today
+                            </a>
+                        </form>
+
+                        <!-- Attendance Summary -->
+                        {% if attendance_data %}
+                        <div class="row mb-4">
+                            <div class="col-md-3">
+                                <div class="info-box bg-info">
+                                    <span class="info-box-icon"><i class="fas fa-users"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Total Employees</span>
+                                        <span class="info-box-number">{{ attendance_data|length }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="info-box bg-success">
+                                    <span class="info-box-icon"><i class="fas fa-user-check"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Present Today</span>
+                                        <span class="info-box-number">
+                                            {{ attendance_data|length }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="info-box bg-warning">
+                                    <span class="info-box-icon"><i class="fas fa-user-clock"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Checked In Only</span>
+                                        <span class="info-box-number">
+                                            {% with checked_in_only=attendance_data|length %}
+                                                {{ checked_in_only }}
+                                            {% endwith %}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="info-box bg-danger">
+                                    <span class="info-box-icon"><i class="fas fa-user-times"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Absent</span>
+                                        <span class="info-box-number">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Attendance Table -->
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped table-hover">
+                                <thead class="thead-dark">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Employee Name</th>
+                                        <th>Check In Time</th>
+                                        <th>Check Out Time</th>
+                                        <th>Status</th>
+                                        <th>Working Hours</th>
+                                        <th>Department</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if attendance_data %}
+                                        {% for item in attendance_data %}
+                                        <tr>
+                                            <td>{{ forloop.counter }}</td>
+                                            <td>
+                                                <strong>{{ item.record.employee.admin.get_full_name }}</strong>
+                                                <br>
+                                                <small class="text-muted">{{ item.record.employee.admin.email }}</small>
+                                            </td>
+                                            <td>
+                                                {% if item.record.check_in %}
+                                                    <span class="badge badge-success">
+                                                        {{ item.record.check_in|time:"H:i" }}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge badge-danger">Not Checked In</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if item.record.check_out %}
+                                                    <span class="badge badge-info">
+                                                        {{ item.record.check_out|time:"H:i" }}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge badge-warning">Not Checked Out</span>
+                                                    {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if item.record.status %}
+                                                    <span class="badge badge-success">Present</span>
+                                                {% else %}
+                                                    <span class="badge badge-danger">Absent</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if item.duration %}
+                                                    <span class="badge badge-primary">{{ item.duration }}</span>
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-secondary">
+                                                    {{ item.record.employee.department.name }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr>
+                                            <td colspan="7" class="text-center">
+                                                <div class="alert alert-info">
+                                                    <i class="fas fa-info-circle"></i>
+                                                    No attendance records found for the selected date.
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Export Options -->
+                        {% if attendance_data %}
+                        <div class="row mt-4">
+                            <div class="col-md-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Export Options</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <button class="btn btn-success" onclick="exportToExcel()">
+                                            <i class="fas fa-file-excel"></i> Export to Excel
+                                        </button>
+                                        <button class="btn btn-danger" onclick="exportToPDF()">
+                                            <i class="fas fa-file-pdf"></i> Export to PDF
+                                        </button>
+                                        <button class="btn btn-primary" onclick="printTable()">
+                                            <i class="fas fa-print"></i> Print
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+function exportToExcel() {
+    let table = document.querySelector('table');
+    let html = table.outerHTML;
+    let url = 'data:application/vnd.ms-excel;charset=utf-8,' + encodeURIComponent(html);
+    let downloadLink = document.createElement('a');
+    downloadLink.href = url;
+    downloadLink.download = 'attendance_{{ selected_date }}.xls';
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+}
+
+function exportToPDF() {
+    alert('PDF export functionality would be implemented here. This is a placeholder.');
+}
+
+function printTable() {
+    let printContent = document.querySelector('.table-responsive').innerHTML;
+    let originalContent = document.body.innerHTML;
+    
+    document.body.innerHTML = `
+        <html>
+            <head>
+                <title>Attendance Report - {{ selected_date }}</title>
+                <style>
+                    body { font-family: Arial, sans-serif; }
+                    table { width: 100%; border-collapse: collapse; }
+                    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                    th { background-color: #f2f2f2; }
+                    .badge { padding: 4px 8px; border-radius: 4px; color: white; }
+                    .badge-success { background-color: #28a745; }
+                    .badge-danger { background-color: #dc3545; }
+                    .badge-warning { background-color: #ffc107; color: #212529; }
+                    .badge-info { background-color: #17a2b8; }
+                    .badge-secondary { background-color: #6c757d; }
+                </style>
+            </head>
+            <body>
+                <h2>Attendance Report - {{ selected_date }}</h2>
+                ${printContent}
+                <br>
+                <small>Generated on: ${new Date().toLocaleString()}</small>
+            </body>
+        </html>
+    `;
+    
+    window.print();
+    document.body.innerHTML = originalContent;
+    location.reload();
+}
+
+// Auto-refresh the page every 5 minutes to get updated attendance data
+setTimeout(function() {
+    location.reload();
+}, 300000);
+
+// Add search functionality
+$(document).ready(function() {
+    $('table').DataTable({
+        "paging": true,
+        "lengthChange": true,
+        "searching": true,
+        "ordering": true,
+        "info": true,
+        "autoWidth": false,
+        "responsive": true
+    });
+});
+</script>
+
+<!-- Include DataTables for enhanced table functionality -->
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css">
+<script type="text/javascript" src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
+{% endblock custom_js %}

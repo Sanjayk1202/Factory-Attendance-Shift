@@ -1,0 +1,294 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block custom_css %}
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
+<style>
+    .fc-event {
+        padding: 2px 4px;
+        border-radius: 3px;
+        font-size: 0.85em;
+    }
+    .shift-A { background-color: #d4f4dd !important; color: #000 !important; border-color: #28a745 !important; }
+    .shift-B { background-color: #fff0b3 !important; color: #000 !important; border-color: #ffc107 !important; }
+    .shift-C { background-color: #f2d9ff !important; color: #000 !important; border-color: #6f42c1 !important; }
+    #calendar {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        padding: 20px;
+    }
+    .schedule-info {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    .fc-toolbar-title {
+        font-size: 1.5em !important;
+    }
+    .shift-summary {
+        background: #e9ecef;
+        border-radius: 5px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">My Shift Schedule</h3>
+                        <div class="card-tools">
+                            <span class="badge badge-info">Employee ID: {{ employee.employee_id }}</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        
+                        <!-- Employee Information -->
+                        <div class="schedule-info">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h5>Employee Information</h5>
+                                    <p><strong>Name:</strong> {{ employee.admin.get_full_name }}</p>
+                                    <p><strong>Department:</strong> {{ employee.department.name }}</p>
+                                    <p><strong>Division:</strong> {{ employee.division.name }}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <h5>Shift Preference</h5>
+                                    <p><strong>Current Shift:</strong> {{ employee.shift.get_name_display }}</p>
+                                    <p><strong>Shift Preference:</strong> {{ employee.shift_preference.get_name_display|default:"No Preference" }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Schedule Selection -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Select Schedule Week</label>
+                                    <select id="scheduleSelect" class="form-control">
+                                        <option value="">All Upcoming Schedules</option>
+                                        {% for schedule in schedules %}
+                                        <option value="{{ schedule.id }}">
+                                            Week of {{ schedule.week_start_date }} to {{ schedule.week_end_date }}
+                                        </option>
+                                        {% empty %}
+                                        <option value="">No schedules available</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Quick Actions</label>
+                                    <div>
+                                        <a href="{% url 'employee_apply_leave' %}" class="btn btn-warning btn-sm">
+                                            <i class="fas fa-calendar-minus"></i> Apply for Leave
+                                        </a>
+                                        <a href="{% url 'employee_apply_overtime' %}" class="btn btn-info btn-sm">
+                                            <i class="fas fa-clock"></i> Apply for Overtime
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Current Week Summary -->
+                        <div class="shift-summary">
+                            <h5><i class="fas fa-info-circle"></i> This Week's Schedule</h5>
+                            <div id="weekSummary">
+                                Loading weekly summary...
+                            </div>
+                        </div>
+
+                        <!-- Calendar -->
+                        <div id="calendar"></div>
+
+                        <!-- Legend -->
+                        <div class="mt-3">
+                            <h6>Shift Legend:</h6>
+                            <span class="badge shift-A mr-2">Shift A (9:00-17:00)</span>
+                            <span class="badge shift-B mr-2">Shift B (17:00-1:00)</span>
+                            <span class="badge shift-C mr-2">Shift C (1:00-9:00)</span>
+                        </div>
+
+                        <!-- Important Notes -->
+                        <div class="alert alert-info mt-3">
+                            <h6><i class="fas fa-exclamation-circle"></i> Important Notes:</h6>
+                            <ul class="mb-0">
+                                <li>This calendar shows your assigned shifts - it's read-only</li>
+                                <li>Contact your manager for any schedule changes</li>
+                                <li>Apply for leave at least 3 days in advance</li>
+                                <li>Overtime must be approved by your manager</li>
+                            </ul>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block custom_js %}
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var calendarEl = document.getElementById('calendar');
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'timeGridWeek',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        editable: false,  // Read-only for employees
+        droppable: false, // Read-only for employees
+        selectable: false, // Read-only for employees
+        slotMinTime: '00:00:00',
+        slotMaxTime: '24:00:00',
+        allDaySlot: false,
+        events: function(fetchInfo, successCallback, failureCallback) {
+            var scheduleId = document.getElementById('scheduleSelect').value;
+            var employeeId = '{{ employee.id }}';
+            
+            var url = '{% url "get_shift_events" %}?employee_id=' + employeeId;
+            if (scheduleId) {
+                url += '&schedule_id=' + scheduleId;
+            }
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    var events = data.map(event => {
+                        return {
+                            id: event.id,
+                            title: event.title,
+                            start: event.start,
+                            end: event.end,
+                            className: 'shift-' + event.resource.shift_id,
+                            extendedProps: event.resource
+                        };
+                    });
+                    successCallback(events);
+                    
+                    // Update week summary
+                    updateWeekSummary(events, fetchInfo.start, fetchInfo.end);
+                })
+                .catch(error => {
+                    console.error('Error fetching events:', error);
+                    failureCallback(error);
+                });
+        },
+        eventContent: function(arg) {
+            return {
+                html: `
+                    <div class="fc-event-main-frame">
+                        <div class="fc-event-title">${arg.event.title}</div>
+                        <div class="fc-event-time">${arg.timeText}</div>
+                    </div>
+                `
+            };
+        },
+        eventClick: function(info) {
+            // Show shift details when clicked
+            var event = info.event;
+            var shiftDetails = `
+                <strong>Shift Details:</strong><br>
+                Date: ${event.start.toLocaleDateString()}<br>
+                Time: ${event.start.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${event.end.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}<br>
+                Shift: ${event.extendedProps.shift_id}<br>
+                Department: ${event.extendedProps.department}
+            `;
+            
+            // Create and show a modal or alert with shift details
+            var modal = document.createElement('div');
+            modal.className = 'modal fade show';
+            modal.style.display = 'block';
+            modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
+            modal.innerHTML = `
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Shift Information</h5>
+                            <button type="button" class="close" onclick="this.closest('.modal').remove()">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            ${shiftDetails}
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').remove()">Close</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+    });
+
+    calendar.render();
+
+    // Filter change handler
+    document.getElementById('scheduleSelect').addEventListener('change', function() {
+        calendar.refetchEvents();
+    });
+
+    // Function to update week summary
+    function updateWeekSummary(events, weekStart, weekEnd) {
+        var summaryElement = document.getElementById('weekSummary');
+        var totalHours = 0;
+        var shiftCount = events.length;
+        
+        // Calculate total hours for the week
+        events.forEach(function(event) {
+            var start = new Date(event.start);
+            var end = new Date(event.end);
+            var duration = (end - start) / (1000 * 60 * 60); // Convert to hours
+            totalHours += duration;
+        });
+        
+        if (shiftCount > 0) {
+            var summaryHTML = `
+                <div class="row">
+                    <div class="col-md-3">
+                        <strong>Total Shifts:</strong> ${shiftCount}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Total Hours:</strong> ${totalHours.toFixed(1)} hrs
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Week:</strong> ${weekStart.toLocaleDateString()} to ${weekEnd.toLocaleDateString()}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Status:</strong> <span class="badge badge-success">Scheduled</span>
+                    </div>
+                </div>
+            `;
+        } else {
+            var summaryHTML = `
+                <div class="alert alert-warning">
+                    <i class="fas fa-info-circle"></i> No shifts scheduled for this period.
+                    Please contact your manager if you believe this is an error.
+                </div>
+            `;
+        }
+        
+        summaryElement.innerHTML = summaryHTML;
+    }
+    
+    // Initial week summary update
+    setTimeout(function() {
+        var currentView = calendar.view;
+        updateWeekSummary([], currentView.activeStart, currentView.activeEnd);
+    }, 1000);
+});
+</script>
+{% endblock %}

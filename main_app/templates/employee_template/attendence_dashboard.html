@@ -1,0 +1,313 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <!-- Attendance Dashboard -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">Today's Attendance</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="info-box">
+                                    <span class="info-box-icon bg-info"><i class="fas fa-sign-in-alt"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Check In Time</span>
+                                        <span class="info-box-number">
+                                            {% if today_attendance and today_attendance.check_in %}
+                                                {{ today_attendance.check_in|time:"H:i:s" }}
+                                            {% else %}
+                                                Not Checked In
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-box">
+                                    <span class="info-box-icon bg-success"><i class="fas fa-sign-out-alt"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Check Out Time</span>
+                                        <span class="info-box-number">
+                                            {% if today_attendance and today_attendance.check_out %}
+                                                {{ today_attendance.check_out|time:"H:i:s" }}
+                                            {% else %}
+                                                Not Checked Out
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-3">
+                            <div class="col-md-12 text-center">
+                                {% if not today_attendance or not today_attendance.check_in %}
+                                    <button id="checkInBtn" class="btn btn-lg btn-success">
+                                        <i class="fas fa-sign-in-alt"></i> Check In
+                                    </button>
+                                {% elif today_attendance.check_in and not today_attendance.check_out %}
+                                    <button id="checkOutBtn" class="btn btn-lg btn-warning">
+                                        <i class="fas fa-sign-out-alt"></i> Check Out
+                                    </button>
+                                {% else %}
+                                    <button class="btn btn-lg btn-secondary" disabled>
+                                        <i class="fas fa-check"></i> Attendance Complete for Today
+                                    </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="row">
+            <div class="col-lg-3 col-6">
+                <div class="small-box bg-info">
+                    <div class="inner">
+                        <h3>{{total_attendance}}</h3>
+                        <p>Total Attendance</p>
+                    </div>
+                    <div class="icon">
+                        <i class="ion ion-calendar"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-6">
+                <div class="small-box bg-success">
+                    <div class="inner">
+                        <h3>{{ percent_present }}<sup style="font-size: 20px">%</sup></h3>
+                        <p>Attendance Rate</p>
+                    </div>
+                    <div class="icon">
+                        <i class="ion ion-stats-bars"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-6">
+                <div class="small-box bg-warning">
+                    <div class="inner">
+                        <h3>{{percent_absent}}<sup style="font-size: 20px">%</sup></h3>
+                        <p>Absence Rate</p>
+                    </div>
+                    <div class="icon">
+                        <i class="ion ion-alert-circled"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-6">
+                <div class="small-box bg-secondary">
+                    <div class="inner">
+                        <h3 id="currentTime">--:--:--</h3>
+                        <p>Current Time</p>
+                    </div>
+                    <div class="icon">
+                        <i class="ion ion-clock"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Attendance -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Recent Attendance (Last 7 Days)</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Check In</th>
+                                        <th>Check Out</th>
+                                        <th>Status</th>
+                                        <th>Duration</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for attendance in recent_attendance %}
+                                    <tr>
+                                        <td>{{ attendance.date }}</td>
+                                        <td>
+                                            {% if attendance.check_in %}
+                                                {{ attendance.check_in|time:"H:i:s" }}
+                                            {% else %}
+                                                <span class="text-danger">Not Checked In</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if attendance.check_out %}
+                                                {{ attendance.check_out|time:"H:i:s" }}
+                                            {% else %}
+                                                <span class="text-warning">Not Checked Out</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if attendance.status %}
+                                                <span class="badge badge-success">Present</span>
+                                            {% else %}
+                                                <span class="badge badge-danger">Absent</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if attendance.check_in and attendance.check_out %}
+                                                {{ attendance.check_out|timeuntil:attendance.check_in }}
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="5" class="text-center">No attendance records found</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Loading Modal -->
+<div class="modal fade" id="loadingModal" tabindex="-1" role="dialog" aria-labelledby="loadingModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-body text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+                <p class="mt-2">Processing...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+$(document).ready(function() {
+    // Update current time every second
+    function updateCurrentTime() {
+        var now = new Date();
+        var timeString = now.toLocaleTimeString();
+        $('#currentTime').text(timeString);
+    }
+    setInterval(updateCurrentTime, 1000);
+    updateCurrentTime();
+
+    // Check In functionality
+    $('#checkInBtn').click(function() {
+        $('#loadingModal').modal('show');
+        
+        $.ajax({
+            url: "{% url 'employee_check_in' %}",
+            type: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            success: function(response) {
+                $('#loadingModal').modal('hide');
+                if (response.success) {
+                    showAlert('success', response.message);
+                    setTimeout(function() {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    showAlert('error', response.message);
+                }
+            },
+            error: function() {
+                $('#loadingModal').modal('hide');
+                showAlert('error', 'An error occurred. Please try again.');
+            }
+        });
+    });
+
+    // Check Out functionality
+    $('#checkOutBtn').click(function() {
+        $('#loadingModal').modal('show');
+        
+        $.ajax({
+            url: "{% url 'employee_check_out' %}",
+            type: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            success: function(response) {
+                $('#loadingModal').modal('hide');
+                if (response.success) {
+                    showAlert('success', response.message);
+                    setTimeout(function() {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    showAlert('error', response.message);
+                }
+            },
+            error: function() {
+                $('#loadingModal').modal('hide');
+                showAlert('error', 'An error occurred. Please try again.');
+            }
+        });
+    });
+
+    // Helper function to show alerts
+    function showAlert(type, message) {
+        var alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+        var alertHtml = '<div class="alert ' + alertClass + ' alert-dismissible fade show" role="alert">' +
+                        message +
+                        '<button type="button" class="close" data-dismiss="alert" aria-label="Close">' +
+                        '<span aria-hidden="true">&times;</span>' +
+                        '</button>' +
+                        '</div>';
+        $('.content').prepend(alertHtml);
+        
+        // Auto remove alert after 5 seconds
+        setTimeout(function() {
+            $('.alert').alert('close');
+        }, 5000);
+    }
+
+    // Initialize Firebase Messaging (keep your existing Firebase code)
+    // ... (your existing Firebase code here)
+});
+</script>
+
+<!-- Firebase Messaging Script (keep your existing code) -->
+<script src="https://www.gstatic.com/firebasejs/7.23.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/7.23.0/firebase-analytics.js"></script>
+<script src="https://www.gstatic.com/firebasejs/7.22.1/firebase-messaging.js"></script>
+
+<script>
+    // Your existing Firebase configuration and initialization
+    var firebaseConfig = {
+        apiKey: "AIzaSyBarDWWHTfTMSrtc5Lj3Cdw5dEvjAkFwtM",
+        authDomain: "sms-with-django.firebaseapp.com",
+        databaseURL: "https://sms-with-django.firebaseio.com",
+        projectId: "sms-with-django",
+        storageBucket: "sms-with-django.appspot.com",
+        messagingSenderId: "945324593139",
+        appId: "1:945324593139:web:03fa99a8854bbd38420c86",
+        measurementId: "G-2F2RXTL9GT"
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+    const messaging = firebase.messaging();
+    
+    // ... rest of your Firebase messaging code
+</script>
+{% endblock custom_js %}

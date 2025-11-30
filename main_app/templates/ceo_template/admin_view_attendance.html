@@ -23,6 +23,16 @@
     box-shadow: 1px 1px 1px grey;
     margin: 5px;
 }
+.attendance_div_blue{
+    padding: 10px;
+    background: #2196F3;
+    border: 3px solid white;
+    text-align: center;
+    color: #fff;
+    border-radius: 30px;
+    box-shadow: 1px 1px 1px grey;
+    margin: 5px;
+}
 </style>
 {% endblock custom_css %}
 {% block content %}
@@ -40,153 +50,171 @@
                     <!-- /.card-header -->
                     <!-- form start -->
                     <div class="card-body">
-
-
-
                         <div class="form-group">
-                            <label>Department</label>
-                            <select name="department" class="form-control" id='department'>
+                            <label>Division</label>
+                            <select name="division" class="form-control" id='division'>
                                 <option value="">----</option>
-                                {% for department in departments  %}
-                                <option value="{{department.id}}">{{department.name}}</option>
+                                {% for division in divisions  %}
+                                <option value="{{division.id}}">{{division.name}}</option>
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="form-group"><div  style="display: none;" class="alert alert-danger" id='error_attendance'></div>
-                                <div class="alert alert-success" id='success_attendance' style="display: none;"></div>
-                             <button type="button" id='fetch_attendance' class="btn btn-primary btn-block">Fetch
-                                    Attendance</button>
-                        </div>
-                    <!-- /.card-body -->
-                    
                         
-                               
-                            <div class="form-group" style="display: none;" id="attendance_block">
-                            <div class="form-group">
-                                <label>Attendance Date</label>
-                                <select name="attendance_date" id='attendance_date' class="form-control">
-                               
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                
-                            <div id="fetch_employee_block" style="display: none;">
-                                <button type="button" id='fetch_employee' class="btn btn-primary btn-block">Fetch Employees</button>
-
-
-                            </div>
-                            <div id='employee_data' class="card-footer">
-
-                            </div>
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" name="date" class="form-control" id='attendance_date'>
                         </div>
-                    </div>  
-                </div>
-                <!-- /.card -->
 
+                        <div class="form-group">
+                            <div style="display: none;" class="alert alert-danger" id='error_attendance'></div>
+                            <div class="alert alert-success" id='success_attendance' style="display: none;"></div>
+                            <button type="button" id='fetch_attendance' class="btn btn-primary btn-block">
+                                Fetch Attendance
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Attendance Results -->
+                <div class="card" id="attendance_results" style="display: none;">
+                    <div class="card-header">
+                        <h3 class="card-title">Attendance Results</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="employee_data" class="table-responsive">
+                            <!-- Attendance data will be loaded here -->
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </section>
 {% endblock content %}
 
-
 {% block custom_js %}
 <script>
     $(document).ready(function () {
         $("#fetch_attendance").click(function(){
-            var department = $("#department").val()
-            if (department.length < 1){
-                $("#error_attendance").html("Kindly Choose a Department");
-                $("#attendance_block").hide()
+            var division = $("#division").val()
+            var date = $("#attendance_date").val()
+            
+            if (division.length < 1){
+                $("#error_attendance").html("Please select a division");
                 $("#error_attendance").show()
+                $("#attendance_results").hide()
                 return false
             }
-            $.ajax({
-                url: "{% url 'get_attendance' %}",
-                type: 'POST',
-                data: {
-                    department: department
-                }
             
+            if (date.length < 1){
+                $("#error_attendance").html("Please select a date");
+                $("#error_attendance").show()
+                $("#attendance_results").hide()
+                return false
             }
 
-            ).done(function(response){
-                var json_data = JSON.parse(response)
-                if (json_data.length > 0){
+            // Show loading
+            $("#employee_data").html('<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading attendance data...</div>');
+            $("#attendance_results").show();
 
-                    var html = "";
-                    for (key in json_data){
-                        html += "<option value='"+json_data[key]['id']+"'>"+json_data[key]['attendance_date']+"</option>"
-                    }
-                    $("#attendance_date").html(html)
-                    $("#error_attendance").hide()
-                    $("#error_attendance").html("")
-                    $("#attendance_block").show()  
-                    $("#fetch_employee_block").show()
-                }else{
-                    $("#error_attendance").html("No Attendance Date Found For Specified Data")
-                    $("#error_attendance").show()
-                    $("#attendance_date").html("")
-                    $("#attendance_block").hide()
-                    $("#employee_data").html("")
-
-
-                }
-            }).fail(function(response){
-                alert("Error While Fetching Data")
-                $("#error_attendance").html("")
-                $("#error_attendance").show()
-                $("#attendance_block").hide()
-                $("#employee_data").html("")
-
-
-            })
-        })
-
-        $("#fetch_employee").click(function () {
-            var attendance_date = $("#attendance_date").val()
-            var department = $("#department").val()
-            $("#employee_data").html(null)
-if (attendance_date.length  == 0){
-    alert("Please Choose A Date");
-    $("#save_attendance").hide()
-
-    return false;
-}
             $.ajax({
                 url: "{% url 'get_admin_attendance' %}",
                 type: 'POST',
                 data: {
-                    attendance_date_id:attendance_date,
-                    department:department
+                    division: division,
+                    date: date
+                },
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
                 }
-            }).done(function (response) {
-                var json_data = JSON.parse(response)
-                if (json_data.length < 1) {
-                    alert("No data to display")
-
+            }).done(function(response){
+                var json_data = JSON.parse(response);
+                
+                if (json_data.length > 0){
+                    var html = `
+                        <table class="table table-bordered table-striped">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Employee Name</th>
+                                    <th>Department</th>
+                                    <th>Check In</th>
+                                    <th>Check Out</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    
+                    for (var i = 0; i < json_data.length; i++) {
+                        var employee = json_data[i];
+                        var status_class = employee.status === 'Present' ? 'badge-success' : 'badge-danger';
+                        var status_icon = employee.status === 'Present' ? 'fa-check' : 'fa-times';
+                        
+                        html += `
+                            <tr>
+                                <td>${i + 1}</td>
+                                <td><strong>${employee.name}</strong></td>
+                                <td>${employee.department}</td>
+                                <td>
+                                    <span class="badge badge-info">
+                                        <i class="fas fa-sign-in-alt"></i> ${employee.check_in}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">
+                                        <i class="fas fa-sign-out-alt"></i> ${employee.check_out}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge ${status_class}">
+                                        <i class="fas ${status_icon}"></i> ${employee.status}
+                                    </span>
+                                </td>
+                            </tr>
+                        `;
+                    }
+                    
+                    html += `
+                            </tbody>
+                        </table>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> Showing ${json_data.length} employee(s)
+                        </div>
+                    `;
+                    
+                    $("#employee_data").html(html);
+                    $("#error_attendance").hide();
+                    $("#success_attendance").html("Attendance data loaded successfully");
+                    $("#success_attendance").show();
+                    
                 } else {
-
-                    var div_data = "<hr/><div class='form-group'></div><div class='form-group'> <label>Employee Attendance</label><div class='row'>"
-
-                    for (key in json_data) {
-                            if (json_data[key]['status'] == 'True'){
-                                div_data += "<div class='col-lg-3 attendance_div_green'><b>"+ json_data[key]['name'] + "</b><br/>Present</div>" 
-                            }else{
-        
-                                div_data += "<div class='col-lg-3 attendance_div_red'><b>"+ json_data[key]['name'] + "</b><br/>Absent</div>"
-                            }
-                        }
-                       // div_data += "<div class='col-lg-3'><div class='form-check custom-control custom-checkbox'><input type='checkbox' class='custom-control-input' " + (json_data[key]['status'] ? "checked='checked'" : "")+" name='employee_data[]' value=" + json_data[key]['id'] + " id='checkbox" + json_data[key]['id'] + "' /> <label for='checkbox" + json_data[key]['id'] + "' class='custom-control-label'>" + json_data[key]['name']  + (json_data[key]['status'] ? " [Present] " : " [Absent] ")+"</label></div> </div>"
-                    div_data += "</div></div>"
-                    $("#employee_data").html(div_data)
+                    $("#employee_data").html(`
+                        <div class="alert alert-warning text-center">
+                            <i class="fas fa-exclamation-triangle"></i><br>
+                            No attendance records found for the selected division and date.
+                        </div>
+                    `);
+                    $("#error_attendance").hide();
                 }
-            }).fail(function (response) {
-                alert("Error in fetching employees")
-            })
+                
+            }).fail(function(response){
+                $("#employee_data").html(`
+                    <div class="alert alert-danger text-center">
+                        <i class="fas fa-exclamation-circle"></i><br>
+                        Error occurred while fetching attendance data. Please try again.
+                    </div>
+                `);
+                $("#error_attendance").html("Error fetching attendance data");
+                $("#error_attendance").show();
+            });
+        });
 
-        })
-       
-    })
+        // Hide alerts when user starts typing/selecting
+        $("#division, #attendance_date").change(function(){
+            $("#error_attendance").hide();
+            $("#success_attendance").hide();
+        });
+    });
 </script>
 {% endblock custom_js %}

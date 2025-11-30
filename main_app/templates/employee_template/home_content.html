@@ -4,284 +4,563 @@
 {% block content %}
 <section class="content">
     <div class="container-fluid">
-        <!-- Small boxes (Stat box) -->
+        <!-- Attendance Dashboard -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">Today's Attendance - {{ today_attendance.date|default:"" }}</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="info-box">
+                                    <span class="info-box-icon bg-info"><i class="fas fa-sign-in-alt"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Check In Time</span>
+                                        <span class="info-box-number">
+                                            {% if today_attendance and today_attendance.check_in_japan %}
+                                                {{ today_attendance.check_in_japan|time:"H:i" }}
+                                                {% if today_attendance.is_late %}
+                                                    <small class="text-danger d-block">(Late)</small>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-danger">Not Checked In</span>
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="info-box">
+                                    <span class="info-box-icon bg-success"><i class="fas fa-sign-out-alt"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Check Out Time</span>
+                                        <span class="info-box-number">
+                                            {% if today_attendance and today_attendance.check_out_japan %}
+                                                {{ today_attendance.check_out_japan|time:"H:i" }}
+                                                {% if today_attendance.is_early_departure %}
+                                                    <small class="text-warning d-block">(Early)</small>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-warning">Not Checked Out</span>
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="info-box">
+                                    <span class="info-box-icon bg-warning"><i class="fas fa-user-clock"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Today's Status</span>
+                                        <span class="info-box-number">
+                                            {% if today_attendance and today_attendance.status %}
+                                                <span class="badge badge-success">Present</span>
+                                            {% elif today_attendance and not today_attendance.status %}
+                                                <span class="badge badge-danger">Absent</span>
+                                            {% else %}
+                                                <span class="badge badge-secondary">Not Started</span>
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="info-box">
+                                    <span class="info-box-icon bg-secondary"><i class="fas fa-clock"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Your Shift</span>
+                                        <span class="info-box-number">
+                                            {{ request.user.employee.shift.name }}
+                                            <small class="d-block">
+                                                {{ request.user.employee.shift.start_time|time:"H:i" }} - {{ request.user.employee.shift.end_time|time:"H:i" }}
+                                            </small>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-3">
+                            <div class="col-md-12 text-center">
+                                {% if not today_attendance or not today_attendance.check_in %}
+                                    <button id="checkInBtn" class="btn btn-lg btn-success mr-2">
+                                        <i class="fas fa-sign-in-alt"></i> Check In Now
+                                    </button>
+                                {% endif %}
+                                
+                                {% if today_attendance and today_attendance.check_in and not today_attendance.check_out %}
+                                    <button id="checkOutBtn" class="btn btn-lg btn-warning mr-2">
+                                        <i class="fas fa-sign-out-alt"></i> Check Out Now
+                                    </button>
+                                {% endif %}
+                                
+                                {% if today_attendance and today_attendance.check_in and today_attendance.check_out %}
+                                    <button class="btn btn-lg btn-secondary" disabled>
+                                        <i class="fas fa-check-circle"></i> Attendance Complete for Today
+                                    </button>
+                                {% endif %}
+                                
+                                <a href="{% url 'employee_view_attendance' %}" class="btn btn-lg btn-info">
+                                    <i class="fas fa-history"></i> View Attendance History
+                                </a>
+                                <a href="{% url 'employee_apply_overtime' %}" class="btn btn-lg btn-warning">
+                                    <i class="fas fa-clock"></i> Apply Overtime
+                                </a>
+                            </div>
+                        </div>
+                        
+                        {% if today_attendance and today_attendance.check_in and not today_attendance.check_out %}
+                        <div class="row mt-3">
+                            <div class="col-md-12">
+                                <div class="alert alert-info text-center">
+                                    <i class="fas fa-clock"></i> You checked in at {{ today_attendance.check_in_japan|time:"H:i" }}. Remember to check out when you finish work.
+                                    {% if today_attendance.is_late %}
+                                    <br><strong class="text-danger">Note: You were marked as late today.</strong>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
         <div class="row">
             <div class="col-lg-3 col-6">
-                <!-- small box -->
                 <div class="small-box bg-info">
                     <div class="inner">
                         <h3>{{total_attendance}}</h3>
-
-                        <p>Total Attendance</p>
+                        <p>Total Attendance Days</p>
                     </div>
                     <div class="icon">
-                        <i class="ion ion-bag"></i>
+                        <i class="ion ion-calendar"></i>
                     </div>
-                    {# <a href="#" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a> #}
+                    <a href="{% url 'employee_view_attendance' %}" class="small-box-footer">View History <i class="fas fa-arrow-circle-right"></i></a>
                 </div>
             </div>
-            <!-- ./col -->
             <div class="col-lg-3 col-6">
-                <!-- small box -->
                 <div class="small-box bg-success">
                     <div class="inner">
                         <h3>{{ percent_present }}<sup style="font-size: 20px">%</sup></h3>
-
-                        <p>Percentage Present</p>
-                    </div>
-                    <div class="icon">
-                        <i class="ion ion-person-add"></i>
-                    </div>
-                    {# <a href="#" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a> #}
-                </div>
-            </div>
-            <!-- ./col -->
-            <div class="col-lg-3 col-6">
-                <!-- small box -->
-                <div class="small-box bg-danger">
-                    <div class="inner">
-                        <h3>{{percent_absent}}<sup style="font-size: 20px">%</sup></h3>
-
-                        <p>Percentage Absent</p>
+                        <p>Attendance Rate</p>
                     </div>
                     <div class="icon">
                         <i class="ion ion-stats-bars"></i>
                     </div>
-                    {# <a href="#" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a> #}
+                    <a href="{% url 'employee_view_attendance' %}" class="small-box-footer">View Details <i class="fas fa-arrow-circle-right"></i></a>
                 </div>
             </div>
-            <!-- ./col -->
             <div class="col-lg-3 col-6">
-                <!-- small box -->
                 <div class="small-box bg-warning">
                     <div class="inner">
-                        <h3>{{total_department}}</h3>
-
-                        <p>Total Department</p>
+                        <h3>{{overtime_summary.total_hours|floatformat:1}}</h3>
+                        <p>Total Overtime Hours</p>
                     </div>
                     <div class="icon">
-                        <i class="ion ion-pie-graph"></i>
+                        <i class="ion ion-clock"></i>
                     </div>
-                    {# <a href="#" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a> #}
+                    <a href="{% url 'employee_apply_overtime' %}" class="small-box-footer">Apply Overtime <i class="fas fa-arrow-circle-right"></i></a>
                 </div>
             </div>
-            <!-- ./col -->
-        </div>
-        <div class="row">
-            <div class="col-lg-6">
-           
-                        <!-- DONUT CHART -->
-                        <div class="card card-secondary">
-                          <div class="card-header">
-                            <h3 class="card-title">{{page_title}}</h3>
-            
-                            <div class="card-tools">
-                              <button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-minus"></i>
-                              </button>
-                              <button type="button" class="btn btn-tool" data-card-widget="remove"><i class="fas fa-times"></i></button>
-                            </div>
-                          </div>
-                          <div class="card-body">
-                            <canvas id="attendanceData" style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
-                          </div>
-                          <!-- /.card-body -->
-                        </div>
-                        <!-- /.card -->
+            <div class="col-lg-3 col-6">
+                <div class="small-box bg-secondary">
+                    <div class="inner">
+                        <h3>{{overtime_summary.remaining_hours|floatformat:1}}</h3>
+                        <p>Overtime Available</p>
+                    </div>
+                    <div class="icon">
+                        <i class="ion ion-card"></i>
+                    </div>
+                    <a href="{% url 'employee_apply_overtime' %}" class="small-box-footer">Use Overtime <i class="fas fa-arrow-circle-right"></i></a>
+                </div>
             </div>
-                  
-            <div class="col-lg-6">
-            
-                        <div class="card card-secondary">
-                          <div class="card-header">
-                            <h3 class="card-title">{{page_title}}</h3>
-            
-                            <div class="card-tools">
-                              <button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-minus"></i>
-                              </button>
-                              <button type="button" class="btn btn-tool" data-card-widget="remove"><i class="fas fa-times"></i></button>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Quick Actions</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-lg-3 col-6">
+                                <div class="small-box bg-info">
+                                    <div class="inner">
+                                        <h4>Apply Leave</h4>
+                                        <p>Submit leave request</p>
+                                    </div>
+                                    <div class="icon">
+                                        <i class="fas fa-calendar-plus"></i>
+                                    </div>
+                                    <a href="{% url 'employee_apply_leave' %}" class="small-box-footer">
+                                        Go <i class="fas fa-arrow-circle-right"></i>
+                                    </a>
+                                </div>
                             </div>
-                          </div>
-                          <div class="card-body">
-                            <div class="chart">
-                              <canvas id="attendanceStatistics" style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
-                          <!-- /.card-body -->
-                        <!-- /.card -->
-                        </div> 
+                            <div class="col-lg-3 col-6">
+                                <div class="small-box bg-success">
+                                    <div class="inner">
+                                        <h4>Apply Overtime</h4>
+                                        <p>Request overtime</p>
+                                    </div>
+                                    <div class="icon">
+                                        <i class="fas fa-clock"></i>
+                                    </div>
+                                    <a href="{% url 'employee_apply_overtime' %}" class="small-box-footer">
+                                        Go <i class="fas fa-arrow-circle-right"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="col-lg-3 col-6">
+                                <div class="small-box bg-warning">
+                                    <div class="inner">
+                                        <h4>View Salary</h4>
+                                        <p>Check your salary</p>
+                                    </div>
+                                    <div class="icon">
+                                        <i class="fas fa-money-bill-wave"></i>
+                                    </div>
+                                    <a href="{% url 'employee_view_salary' %}" class="small-box-footer">
+                                        Go <i class="fas fa-arrow-circle-right"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="col-lg-3 col-6">
+                                <div class="small-box bg-secondary">
+                                    <div class="inner">
+                                        <h4>Feedback</h4>
+                                        <p>Send feedback</p>
+                                    </div>
+                                    <div class="icon">
+                                        <i class="fas fa-comments"></i>
+                                    </div>
+                                    <a href="{% url 'employee_feedback' %}" class="small-box-footer">
+                                        Go <i class="fas fa-arrow-circle-right"></i>
+                                    </a>
+                                </div>
+                            </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Attendance -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Recent Attendance (Last 7 Days)</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Check In</th>
+                                        <th>Check Out</th>
+                                        <th>Status</th>
+                                        <th>Duration</th>
+                                        <th>Remarks</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in recent_attendance_data %}
+                                    <tr>
+                                        <td>{{ item.attendance.date|date:"Y-m-d" }}</td>
+                                        <td>
+                                            {% if item.check_in_japan %}
+                                                <span class="badge badge-success">{{ item.check_in_japan|time:"H:i" }}</span>
+                                            {% else %}
+                                                <span class="badge badge-danger">Not Checked In</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.check_out_japan %}
+                                                <span class="badge badge-info">{{ item.check_out_japan|time:"H:i" }}</span>
+                                            {% else %}
+                                                <span class="badge badge-warning">Not Checked Out</span>
+                                                {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.attendance.status %}
+                                                <span class="badge badge-success">Present</span>
+                                            {% else %}
+                                                <span class="badge badge-danger">Absent</span>
+                                                {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.duration %}
+                                                <span class="badge badge-primary">{{ item.duration }}</span>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.attendance.is_late %}
+                                                <span class="badge badge-danger">Late</span>
+                                            {% endif %}
+                                            {% if item.attendance.is_early_departure %}
+                                                <span class="badge badge-warning">Early</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="6" class="text-center">No attendance records found for the last 7 days</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Shift Information -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card card-info">
+                    <div class="card-header">
+                        <h3 class="card-title">Your Shift Information</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5>Current Shift: <strong>{{ request.user.employee.shift.name }}</strong></h5>
+                                <p><strong>Timing:</strong> {{ request.user.employee.shift.start_time|time:"H:i" }} - {{ request.user.employee.shift.end_time|time:"H:i" }}</p>
+                                <p><strong>Description:</strong> {{ request.user.employee.shift.description }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="alert alert-warning">
+                                    <h6><i class="icon fas fa-exclamation-triangle"></i> Important Notes:</h6>
+                                    <ul class="mb-0">
+                                        <li>Check in within 10 minutes of shift start to avoid being marked late</li>
+                                        <li>Check out within 10 minutes of shift end to avoid early departure mark</li>
+                                        <li>Overtime must be approved by your manager</li>
+                                        <li>Weekly hours exceeding 40 will be flagged for review</li>
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
-                        </div>
-                        </div>  
-                        </section>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Loading Modal -->
+<div class="modal fade" id="loadingModal" tabindex="-1" role="dialog" aria-labelledby="loadingModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-body text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+                <p class="mt-2">Processing...</p>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock content %}
 
 {% block custom_js %}
-  <script>
-$(document).ready(function(){
-
-    //Dataset
-    var departments = {{data_name|safe}}
-    var data_present = {{data_present}}
-    var data_absent = {{data_absent}}
-
-    //-------------
-    //- DONUT CHART -
-    var attendanceDataCanvas = $('#attendanceData').get(0).getContext('2d')
-    var donutData        = {
-      labels: [
-         'Present', 'Absent'
-      ],
-      datasets: [
-        {
-          data: [{{percent_present}}, {{percent_absent}}],
-          backgroundColor : ['#00a65a','#f56954'],
-        }
-      ]
-    }
-    var donutOptions     = {
-      maintainAspectRatio : false,
-      responsive : true,
-    }
-    var attendanceData = new Chart(attendanceDataCanvas, {
-      type: 'doughnut',
-      data: donutData,
-      options: donutOptions      
+<script>
+$(document).ready(function() {
+    // Check In functionality
+    $('#checkInBtn').click(function() {
+        $('#loadingModal').modal('show');
+        
+        $.ajax({
+            url: "{% url 'employee_check_in' %}",
+            type: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            success: function(response) {
+                $('#loadingModal').modal('hide');
+                if (response.success) {
+                    let message = response.message;
+                    if (response.is_late) {
+                        message += ' You were marked as late.';
+                    }
+                    showAlert('success', message);
+                    setTimeout(function() {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    showAlert('error', response.message);
+                }
+            },
+            error: function(xhr, status, error) {
+                $('#loadingModal').modal('hide');
+                showAlert('error', 'An error occurred. Please try again.');
+                console.error('Check-in error:', error);
+            }
+        });
     });
 
-    //attendanceStatistics
-//Bar Chart
-var areaChartData = {
-    labels  : departments,
-    datasets: [
-    {
-        label               : 'Present In Class',
-        backgroundColor     : 'rgba(60,141,188,0.9)',
-        borderColor         : 'rgba(60,141,188,0.8)',
-        pointRadius          : false,
-        pointColor          : '#3b8bba',
-        pointStrokeColor    : 'rgba(60,141,188,1)',
-        pointHighlightFill  : '#fff',
-        pointHighlightStroke: 'rgba(60,141,188,1)',
-        data                : data_present
-      },
-
-      {
-        label               : 'Absent In Class',
-        backgroundColor     : 'rgba(210, 214, 222, 1)',
-        borderColor         : 'rgba(210, 214, 222, 1)',
-        pointRadius         : false,
-        pointColor          : 'rgba(210, 214, 222, 1)',
-        pointStrokeColor    : '#c1c7d1',
-        pointHighlightFill  : '#fff',
-        pointHighlightStroke: 'rgba(220,220,220,1)',
-        data                : data_absent
-      },
-    ]
-  }
-var barChartCanvas = $('#attendanceStatistics').get(0).getContext('2d')
-var barChartData = jQuery.extend(true, {}, areaChartData)
-var temp = areaChartData.datasets[0]
-barChartData.datasets[0] = temp
-var barChartOptions = {
-  responsive              : true,
-  maintainAspectRatio     : false,
-  datasetFill             : false
-}
-
-var barChart = new Chart(barChartCanvas, {
-  type: 'bar', 
-  data: barChartData,
-  options: barChartOptions
-})
-
- 
-})
-
-  </script>
-        <!-- The core Firebase JS SDK is always required and must be listed first -->
-        <script src="https://www.gstatic.com/firebasejs/7.23.0/firebase-app.js"></script>
-
-        <!-- TODO: Add SDKs for Firebase products that you want to use
-         https://firebase.google.com/docs/web/setup#available-libraries -->
-        <script src="https://www.gstatic.com/firebasejs/7.23.0/firebase-analytics.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/7.22.1/firebase-messaging.js"></script>
-    
-    
-        <script>
-            // Your web app's Firebase configuration
-            // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-            var firebaseConfig = {
-                apiKey: "AIzaSyBarDWWHTfTMSrtc5Lj3Cdw5dEvjAkFwtM",
-                authDomain: "sms-with-django.firebaseapp.com",
-                databaseURL: "https://sms-with-django.firebaseio.com",
-                projectId: "sms-with-django",
-                storageBucket: "sms-with-django.appspot.com",
-                messagingSenderId: "945324593139",
-                appId: "1:945324593139:web:03fa99a8854bbd38420c86",
-                measurementId: "G-2F2RXTL9GT"
-            };
-            // Initialize Firebase
-            firebase.initializeApp(firebaseConfig)
-            const messaging = firebase.messaging();
-            function InitializeFireBaseMessaging() {
-                messaging
-                    .requestPermission()
-                    .then(function () {
-                        console.log("Notification Permission");
-                        return messaging.getToken();
-                    })
-                    .then(function (token) {
-                        console.log("Token : " + token);
-                        sendToServer(token);
-                    })
-                    .catch(function (reason) {
-                        console.log(reason)
-                    })
-            }
-            messaging.onMessage(function (payload) {
-                const notificationOption = {
-                    body: payload.notification.body,
-                    icon: payload.notification.icon,
-    
-                }
-                if (Notification.permission == 'granted') {
-                    var notification = new Notification(payload.notification.title, notificationOption);
-                    notification.onclick = function (event) {
-                        event.preventDefault();
-                        window.open(payload.notification.click_action, "_blank");
-                        notification.close();
+    // Check Out functionality
+    $('#checkOutBtn').click(function() {
+        $('#loadingModal').modal('show');
+        
+        $.ajax({
+            url: "{% url 'employee_check_out' %}",
+            type: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            success: function(response) {
+                $('#loadingModal').modal('hide');
+                if (response.success) {
+                    let message = response.message;
+                    if (response.is_early_departure) {
+                        message += ' You were marked as leaving early.';
                     }
+                    showAlert('success', message);
+                    setTimeout(function() {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    showAlert('error', response.message);
                 }
-                console.log(payload);
-            });
-            messaging.onTokenRefresh(function () {
-                messaging.getToken()
-                    .then(function (newToken) {
-                        console.log("New Token : " + newToken);
-                        sendToServer(newToken);
-  
-                    })
-                    .catch(function (reason) {
-                        console.log(reason)
-                    })
-            })
-    
-            function sendToServer(token){
-              $.ajax({
-                url: "{% url 'employee_fcmtoken' %}",
-                type: 'POST',
-                data: {
-                    token: token,
-                }
-            }).done(function (response) {
-               
-      
-               
-            }).fail(function (response) {
-            })
-  
+            },
+            error: function(xhr, status, error) {
+                $('#loadingModal').modal('hide');
+                showAlert('error', 'An error occurred. Please try again.');
+                console.error('Check-out error:', error);
             }
-            
-            InitializeFireBaseMessaging();
-        </script>
+        });
+    });
+
+    // Helper function to show alerts
+    function showAlert(type, message) {
+        var alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+        var alertHtml = '<div class="alert ' + alertClass + ' alert-dismissible fade show" role="alert">' +
+                        '<strong>' + (type === 'success' ? 'Success!' : 'Error!') + '</strong> ' + message +
+                        '<button type="button" class="close" data-dismiss="alert" aria-label="Close">' +
+                        '<span aria-hidden="true">&times;</span>' +
+                        '</button>' +
+                        '</div>';
+        $('.content').prepend(alertHtml);
+        
+        // Auto remove alert after 5 seconds
+        setTimeout(function() {
+            $('.alert').alert('close');
+        }, 5000);
+    }
+
+    // Auto-refresh attendance table every 5 minutes
+    setTimeout(function() {
+        location.reload();
+    }, 300000);
+});
+</script>
+
+<!-- Firebase Messaging Script -->
+<script src="https://www.gstatic.com/firebasejs/7.23.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/7.23.0/firebase-analytics.js"></script>
+<script src="https://www.gstatic.com/firebasejs/7.22.1/firebase-messaging.js"></script>
+
+<script>
+    // Your existing Firebase configuration and initialization
+    var firebaseConfig = {
+        apiKey: "AIzaSyBarDWWHTfTMSrtc5Lj3Cdw5dEvjAkFwtM",
+        authDomain: "sms-with-django.firebaseapp.com",
+        databaseURL: "https://sms-with-django.firebaseio.com",
+        projectId: "sms-with-django",
+        storageBucket: "sms-with-django.appspot.com",
+        messagingSenderId: "945324593139",
+        appId: "1:945324593139:web:03fa99a8854bbd38420c86",
+        measurementId: "G-2F2RXTL9GT"
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+    const messaging = firebase.messaging();
+    
+    // Initialize Firebase Messaging
+    function InitializeFireBaseMessaging() {
+        messaging
+            .requestPermission()
+            .then(function () {
+                console.log("Notification Permission");
+                return messaging.getToken();
+            })
+            .then(function (token) {
+                console.log("Token : " + token);
+                sendToServer(token);
+            })
+            .catch(function (reason) {
+                console.log(reason)
+            })
+    }
+    
+    messaging.onMessage(function (payload) {
+        const notificationOption = {
+            body: payload.notification.body,
+            icon: payload.notification.icon
+        }
+        if (Notification.permission == 'granted') {
+            var notification = new Notification(payload.notification.title, notificationOption);
+            notification.onclick = function (event) {
+                event.preventDefault();
+                window.open(payload.notification.click_action, "_blank");
+                notification.close();
+            }
+        }
+        console.log(payload);
+        
+        // Show custom toast notification
+        showCustomToast(payload.notification.title, payload.notification.body);
+    });
+    
+    function sendToServer(token){
+        $.ajax({
+            url: "{% url 'employee_fcmtoken' %}",
+            type: 'POST',
+            data: {
+                token: token,
+            }
+        }).done(function (response) {
+            console.log('Token saved to server');
+        }).fail(function (response) {
+            console.log('Failed to save token');
+        });
+    }
+    
+    function showCustomToast(title, message) {
+        // Create and show a custom toast notification
+        const toast = $(`
+            <div class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-delay="5000" style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
+                <div class="toast-header bg-primary text-white">
+                    <strong class="mr-auto">${title}</strong>
+                    <button type="button" class="ml-2 mb-1 close text-white" data-dismiss="toast" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="toast-body">
+                    ${message}
+                </div>
+            </div>
+        `);
+        $('body').append(toast);
+        toast.toast('show');
+        
+        // Remove toast from DOM after it's hidden
+        toast.on('hidden.bs.toast', function () {
+            $(this).remove();
+        });
+    }
+    
+    InitializeFireBaseMessaging();
+</script>
 {% endblock custom_js %}

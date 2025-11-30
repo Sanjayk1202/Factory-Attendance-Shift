@@ -1,0 +1,81 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">{{page_title}}</h3>
+                    </div>
+                    <div class="card-body">
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="form-group">
+                                <label for="{{ form.employee.id_for_label }}">Send to Specific Employee (Optional)</label>
+                                {{ form.employee }}
+                            </div>
+                            <div class="form-group">
+                                <label for="{{ form.department.id_for_label }}">Or Send to Entire Department (Optional)</label>
+                                {{ form.department }}
+                                <small class="form-text text-muted">Leave both blank to send to all employees in your division</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="{{ form.message.id_for_label }}">Message</label>
+                                {{ form.message }}
+                            </div>
+                            <button type="submit" class="btn btn-primary">Send Notification</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Notification History -->
+                <div class="card card-secondary">
+                    <div class="card-header">
+                        <h3 class="card-title">Notification History</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Sent To</th>
+                                        <th>Message</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for notification in notification_history %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>
+                                            {% if notification.employee %}
+                                                {{ notification.employee }}
+                                            {% elif notification.department %}
+                                                {{ notification.department }} Department
+                                            {% else %}
+                                                All Employees
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ notification.message }}</td>
+                                        <td>{{ notification.created_at|date:"Y-m-d H:i" }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="text-center">No notifications sent yet</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

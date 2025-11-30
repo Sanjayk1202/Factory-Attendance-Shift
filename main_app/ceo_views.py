@@ -1,5 +1,6 @@
 import json
 import requests
+from datetime import datetime, date, timedelta
 from django.contrib import messages
 from django.core.files.storage import FileSystemStorage
 from django.http import HttpResponse, JsonResponse
@@ -20,23 +21,32 @@ def admin_home(request):
     departments = Department.objects.all()
     total_department = departments.count()
     total_division = Division.objects.all().count()
-    attendance_list = Attendance.objects.filter(department__in=departments)
-    total_attendance = attendance_list.count()
+    
+    # Fix: Use new Attendance model structure
+    total_attendance = Attendance.objects.all().count()
+    
+    # Get attendance statistics by division
+    divisions = Division.objects.all()
+    division_list = []
     attendance_list = []
-    department_list = []
-    for department in departments:
-        attendance_count = Attendance.objects.filter(department=department).count()
-        department_list.append(department.name[:7])
+    
+    for division in divisions:
+        employees_in_division = Employee.objects.filter(division=division)
+        attendance_count = Attendance.objects.filter(
+            employee__in=employees_in_division
+        ).count()
+        division_list.append(division.name[:7])
         attendance_list.append(attendance_count)
+    
     context = {
         'page_title': "Administrative Dashboard",
         'total_employees': total_employees,
         'total_manager': total_manager,
         'total_division': total_division,
         'total_department': total_department,
-        'department_list': department_list,
+        'total_attendance': total_attendance,
+        'division_list': division_list,
         'attendance_list': attendance_list
-
     }
     return render(request, 'ceo_template/home_content.html', context)
 
@@ -53,6 +63,7 @@ def add_manager(request):
             gender = form.cleaned_data.get('gender')
             password = form.cleaned_data.get('password')
             division = form.cleaned_data.get('division')
+            shift = form.cleaned_data.get('shift')
             passport = request.FILES.get('profile_pic')
             fs = FileSystemStorage()
             filename = fs.save(passport.name, passport)
@@ -63,6 +74,7 @@ def add_manager(request):
                 user.gender = gender
                 user.address = address
                 user.manager.division = division
+                user.manager.shift = shift
                 user.save()
                 messages.success(request, "Successfully Added")
                 return redirect(reverse('add_manager'))
@@ -88,6 +100,7 @@ def add_employee(request):
             password = employee_form.cleaned_data.get('password')
             division = employee_form.cleaned_data.get('division')
             department = employee_form.cleaned_data.get('department')
+            shift = employee_form.cleaned_data.get('shift')
             passport = request.FILES['profile_pic']
             fs = FileSystemStorage()
             filename = fs.save(passport.name, passport)
@@ -99,6 +112,7 @@ def add_employee(request):
                 user.address = address
                 user.employee.division = division
                 user.employee.department = department
+                user.employee.shift = shift
                 user.save()
                 messages.success(request, "Successfully Added")
                 return redirect(reverse('add_employee'))
@@ -211,6 +225,7 @@ def edit_manager(request, manager_id):
             gender = form.cleaned_data.get('gender')
             password = form.cleaned_data.get('password') or None
             division = form.cleaned_data.get('division')
+            shift = form.cleaned_data.get('shift')
             passport = request.FILES.get('profile_pic') or None
             try:
                 user = CustomUser.objects.get(id=manager.admin.id)
@@ -228,6 +243,7 @@ def edit_manager(request, manager_id):
                 user.gender = gender
                 user.address = address
                 manager.division = division
+                manager.shift = shift
                 user.save()
                 manager.save()
                 messages.success(request, "Successfully Updated")
@@ -261,6 +277,7 @@ def edit_employee(request, employee_id):
             password = form.cleaned_data.get('password') or None
             division = form.cleaned_data.get('division')
             department = form.cleaned_data.get('department')
+            shift = form.cleaned_data.get('shift')
             passport = request.FILES.get('profile_pic') or None
             try:
                 user = CustomUser.objects.get(id=employee.admin.id)
@@ -279,6 +296,7 @@ def edit_employee(request, employee_id):
                 user.address = address
                 employee.division = division
                 employee.department = department
+                employee.shift = shift
                 user.save()
                 employee.save()
                 messages.success(request, "Successfully Updated")
@@ -420,59 +438,51 @@ def view_manager_leave(request):
             return False
 
 
-@csrf_exempt
-def view_employee_leave(request):
-    if request.method != 'POST':
-        allLeave = LeaveReportEmployee.objects.all()
-        context = {
-            'allLeave': allLeave,
-            'page_title': 'Leave Applications From Employees'
-        }
-        return render(request, "ceo_template/employee_leave_view.html", context)
-    else:
-        id = request.POST.get('id')
-        status = request.POST.get('status')
-        if (status == '1'):
-            status = 1
-        else:
-            status = -1
-        try:
-            leave = get_object_or_404(LeaveReportEmployee, id=id)
-            leave.status = status
-            leave.save()
-            return HttpResponse(True)
-        except Exception as e:
-            return False
+# Remove employee leave view from CEO - now handled by manager
+def view_employee_leave_ceo(request):
+    # Redirect to appropriate page or show message
+    messages.info(request, "Employee leave applications are now handled by respective managers.")
+    return redirect(reverse('admin_home'))
 
 
 def admin_view_attendance(request):
-    departments = Department.objects.all()
+    divisions = Division.objects.all()
     context = {
-        'departments': departments,
+        'divisions': divisions,
         'page_title': 'View Attendance'
     }
-
     return render(request, "ceo_template/admin_view_attendance.html", context)
 
 
 @csrf_exempt
 def get_admin_attendance(request):
-    department_id = request.POST.get('department')
-    attendance_date_id = request.POST.get('attendance_date_id')
+    division_id = request.POST.get('division')
+    selected_date = request.POST.get('date')
     try:
-        department = get_object_or_404(Department, id=department_id)
-        attendance = get_object_or_404(Attendance, id=attendance_date_id)
-        attendance_reports = AttendanceReport.objects.filter(attendance=attendance)
-        json_data = []
-        for report in attendance_reports:
+        division = get_object_or_404(Division, id=division_id)
+        employees = Employee.objects.filter(division=division)
+        attendance_date = datetime.strptime(selected_date, "%Y-%m-%d").date()
+        
+        attendance_data = []
+        for employee in employees:
+            attendance = Attendance.objects.filter(
+                employee=employee, 
+                date=attendance_date
+            ).first()
+            
             data = {
-                "status": str(report.status),
-                "name": str(report.employee)
+                "name": str(employee),
+                "check_in": attendance.check_in.strftime("%H:%M") if attendance and attendance.check_in else "Not checked in",
+                "check_out": attendance.check_out.strftime("%H:%M") if attendance and attendance.check_out else "Not checked out",
+                "status": "Present" if attendance and attendance.status else "Absent",
+                "department": employee.department.name if employee.department else "No Department",
+                "shift": employee.shift.name if employee.shift else "No Shift"
             }
-            json_data.append(data)
-        return JsonResponse(json.dumps(json_data), safe=False)
+            attendance_data.append(data)
+        
+        return JsonResponse(json.dumps(attendance_data), safe=False)
     except Exception as e:
-        return None
+        return JsonResponse({'error': str(e)}, status=400)
 
 
 def admin_view_profile(request):

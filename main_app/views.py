@@ -5,9 +5,10 @@ from django.contrib.auth import authenticate, login, logout
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render, reverse
 from django.views.decorators.csrf import csrf_exempt
+from datetime import datetime
 
 from .EmailBackend import EmailBackend
-from .models import Attendance, Department
+from .models import Attendance, Division, Employee
 
 # Create your views here.
 
@@ -70,20 +71,26 @@ def logout_user(request):
 
 @csrf_exempt
 def get_attendance(request):
-    department_id = request.POST.get('department')
+    division_id = request.POST.get('division')
     try:
-        department = get_object_or_404(Department, id=department_id)
-        attendance = Attendance.objects.filter(department=department)
+        division = get_object_or_404(Division, id=division_id)
+        employees = Employee.objects.filter(division=division)
+        
+        # Get unique dates from attendance records
+        attendance_dates = Attendance.objects.filter(
+            employee__in=employees
+        ).values_list('date', flat=True).distinct().order_by('-date')
+        
         attendance_list = []
-        for attd in attendance:
+        for date_obj in attendance_dates:
             data = {
-                    "id": attd.id,
-                    "attendance_date": str(attd.date)
-                    }
+                "id": date_obj.strftime("%Y-%m-%d"),
+                "attendance_date": date_obj.strftime("%Y-%m-%d")
+            }
             attendance_list.append(data)
         return JsonResponse(json.dumps(attendance_list), safe=False)
     except Exception as e:
-        return None
+        return JsonResponse({'error': str(e)}, status=400)
 
 
 def showFirebaseJS(request):
